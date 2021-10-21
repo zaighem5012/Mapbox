@@ -1,0 +1,108 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Add live realtime data</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.5.1/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.5.1/mapbox-gl.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoicnNhbnoiLCJhIjoiY2t1c2ZrMWVsMDlxNDJ3bHQyamFraGc3OSJ9.62fuCJziu44nTePXIUNrSg';
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/rsanz/ckusgvkps5b4f17pjw33x31td',
+            zoom: 0
+        });
+
+        map.on('load', async () => {
+            // Get the initial location of the International Space Station (ISS).
+            const geojson = await getLocation();
+            // Add the ISS location as a source.
+            map.addSource(mapdataid, {
+                type: 'geojson',
+                mapdata: geojson
+            });
+            // Add the rocket symbol layer to the map.
+            map.addLayer({
+                'id': mapdataid.id,
+                'type': 'symbol',
+                'source': mapdataid,
+                'layout': {
+                    // This icon is a part of the Mapbox Streets style.
+                    // To view all images available in a Mapbox style, open
+                    // the style in Mapbox Studio and click the "Images" tab.
+                    // To add a new image to the style at runtime see
+                    // https://docs.mapbox.com/mapbox-gl-js/example/add-image/
+                    'icon-image': 'rocket-15'
+                }
+            });
+
+            // Update the source from the API every 2 seconds.
+            // const updateSource = setInterval(async () => {
+            // const geojson = await getLocation(updateSource);
+            // map.getSource('iss').setData(geojson);
+            // }, 2000);
+
+            async function getLocation(updateSource) {
+                // Make a GET request to the API and return the location of the ISS.
+                try {
+                    const response = await fetch(
+                        'https://raw.githubusercontent.com/mysidewalk/interview/master/frontend-engineer/kc-neighborhoods.json',
+                        { method: 'GET' }
+                    );
+
+                    const data = await response.json();
+                    let mapdata = data.features[0].geometry.coordinates[0];
+                    let cordinatesdata = mapdata[0];
+                    // console.log(data.features[0].properties);
+                    const mapdataid = data.features[0].properties;
+                    console.log(mapdataid);
+                    const longitude = cordinatesdata[0];
+                    const latitude = cordinatesdata[1];
+
+                    // Fly the map to the location.
+                    map.flyTo({
+                        center: [longitude, latitude],
+                        speed: 0.5
+                    });
+                    // Return the location of the ISS as GeoJSON.
+                    return {
+                        'type': 'FeatureCollection',
+                        'features': [
+                            {
+                                'type': 'Feature',
+                                'geometry': {
+                                    'type': 'Point',
+                                    'coordinates': [longitude, latitude]
+                                }
+                            }
+                        ]
+                    };
+                } catch (err) {
+                    // If the updateSource interval is defined, clear the interval to stop updating the source.
+                    if (updateSource) clearInterval(updateSource);
+                    throw new Error(err);
+                }
+            }
+        });
+    </script>
+
+</body>
